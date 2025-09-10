@@ -119,17 +119,23 @@ def display_command_menu(stdscr):
     h, w = stdscr.getmaxyx()
     curses.curs_set(0)
 
-    menu_height = sum(len(group[1]) for group in GROUPED_COMMANDS) + len(GROUPED_COMMANDS) + 3
-    menu_width = 50
+    ideal_height = sum(len(group[1]) for group in GROUPED_COMMANDS) + len(GROUPED_COMMANDS) + 3
+    ideal_width = 50
+
+    # Assurer un espace de marge pour le menu
+    menu_height = min(ideal_height, h - 2)
+    menu_width = min(ideal_width, w - 4)
+
+    # Si l'espace est insuffisant pour un menu minimal, annuler l'opération.
+    MIN_HEIGHT = 10
+    MIN_WIDTH = 24
+    if menu_height < MIN_HEIGHT or menu_width < MIN_WIDTH:
+        curses.beep()
+        curses.curs_set(1)
+        return None
 
     start_y = (h - menu_height) // 2
     start_x = (w - menu_width) // 2
-
-    # S'assurer que la fenêtre n'est pas trop grande pour le terminal
-    if menu_height > h: menu_height = h
-    if menu_width > w: menu_width = w
-    if start_y < 0: start_y = 0
-    if start_x < 0: start_x = 0
 
     menu_win = curses.newwin(menu_height, menu_width, start_y, start_x)
     menu_win.keypad(True)
