@@ -60,6 +60,13 @@ class FileSelector:
     def run(self):
         curses.curs_set(0)
         while True:
+            h, w = self.stdscr.getmaxyx()
+            if h < 5 or w < 40:
+                self.stdscr.erase()
+                self.stdscr.addstr(0, 0, "Terminal trop petit. Redimensionnez.")
+                self.stdscr.refresh()
+                self.stdscr.getch()
+                continue
             try:
                 items = sorted(os.listdir(self.current_path), key=lambda x: (not os.path.isdir(os.path.join(self.current_path, x)), x.lower()))
                 if os.path.abspath(self.current_path) != '/': items.insert(0, "..")
@@ -69,6 +76,8 @@ class FileSelector:
             key = self.stdscr.getch()
             if key == curses.KEY_UP: self.selected_row = max(0, self.selected_row - 1)
             elif key == curses.KEY_DOWN: self.selected_row = min(len(items) - 1, self.selected_row + 1)
+            elif key == ord('p'): return "settings"
+            elif key == ord('h'): return "help"
             elif key == ord('q'): return None
             elif key in [curses.KEY_ENTER, 10, 13]:
                 if not items: continue
@@ -91,5 +100,8 @@ class FileSelector:
                 if cmd in name_prompt:
                     name = prompt_input(self.stdscr, name_prompt[cmd])
                     if name:
-                        if cmd == 'n': open(os.path.join(self.current_path, name), 'a').close()
-                        else: os.makedirs(os.path.join(self.current_path, name), exist_ok=True)
+                        try:
+                            if cmd == 'n': open(os.path.join(self.current_path, name), 'a').close()
+                            else: os.makedirs(os.path.join(self.current_path, name), exist_ok=True)
+                        except OSError as e:
+                            prompt_input(self.stdscr, f"Erreur de création: {e}...")

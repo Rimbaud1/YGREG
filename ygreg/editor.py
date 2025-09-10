@@ -213,6 +213,17 @@ class Editor:
 
     def run(self):
         while True:
+            height, width = self._get_screen_size()
+            if height < 5 or width < 20:
+                self.stdscr.erase()
+                self.stdscr.addstr(0, 0, "Terminal trop petit. Redimensionnez.")
+                self.stdscr.refresh()
+                try:
+                    self.stdscr.get_wch()
+                except curses.error:
+                    pass
+                continue
+
             self._update_color_preview()
             try:
                 self.stdscr.erase()
@@ -286,13 +297,36 @@ class Editor:
             self.lines[self.cursor_y] = self.lines[self.cursor_y].rstrip() + " " + next_line
             self.modified = True
 
-    def _sort_selection(self):
-        if not self.selecting: return
-        (start_y, _), (end_y, _) = self._get_selection_bounds()
-        selected_lines = self.lines[start_y:end_y+1]
-        selected_lines.sort() 
-        self.lines[start_y:end_y+1] = selected_lines
-        self.modified = True; self._set_status_message("Sélection ordonnée")
+    def _sort_lines(self):
+        choice = prompt_input(self.stdscr, "Ordonner: ligne (a)ctuelle, (t)out le document, selection de (l)ignes ? ")
+        if not choice: return
+
+        if choice == 'a':
+            words = self.lines[self.cursor_y].split()
+            words.sort(key=str.lower)
+            self.lines[self.cursor_y] = " ".join(words)
+            self.modified = True
+            self._set_status_message("Ligne actuelle ordonnée")
+        elif choice == 't':
+            self.lines.sort(key=str.lower)
+            self.modified = True
+            self._set_status_message("Document ordonné")
+        elif choice == 'l':
+            start_str = prompt_input(self.stdscr, "Ligne de départ: ")
+            end_str = prompt_input(self.stdscr, "Ligne de fin: ")
+            if start_str.isdigit() and end_str.isdigit():
+                start = int(start_str) - 1
+                end = int(end_str)
+                if 0 <= start < end <= len(self.lines):
+                    lines_to_sort = self.lines[start:end]
+                    lines_to_sort.sort(key=str.lower)
+                    self.lines[start:end] = lines_to_sort
+                    self.modified = True
+                    self._set_status_message(f"Lignes {start+1} à {end} ordonnées")
+                else:
+                    self._set_status_message("Plage de lignes invalide")
+            else:
+                self._set_status_message("Entrée invalide")
 
     def _insert_table(self):
         cols_str = prompt_input(self.stdscr, "Nombre de colonnes: ")
@@ -384,7 +418,7 @@ class Editor:
         elif cmd == 'g': self._goto_line()
         elif cmd == 'd': self._duplicate_line_or_selection()
         elif cmd == 'j': self._join_lines()
-        elif cmd == 'o': self._sort_selection()
+        elif cmd == 'o': self._sort_lines()
         elif cmd == 't': self._insert_table()
         elif cmd == 'x': self._copy_selection(); self._delete_selection()
         elif cmd == 'c': self._copy_selection()
