@@ -57,6 +57,11 @@ class Editor:
                     self.modified_counter = 0
         else: self.modified_counter = 0
 
+    def _get_document_stats(self):
+        char_count = sum(len(line) for line in self.lines)
+        word_count = sum(len(line.split()) for line in self.lines)
+        return char_count, word_count
+
     def _set_status_message(self, msg):
         self.status_message, self.status_message_time = msg, time.time()
 
@@ -83,11 +88,14 @@ class Editor:
         else:
             self.status_message = ""
             modified_char = '[+]' if self.modified else ''
-            status_text = f" {len(self.lines)} Lignes {modified_char}"
+            char_count, word_count = self._get_document_stats()
+            stats_text = f"{len(self.lines)}L, {word_count}M, {char_count}C {modified_char}"
+
             pos_text = f"L:{self.cursor_y + 1}, C:{self.cursor_x + 1} "
             
             self.stdscr.attron(curses.color_pair(status_bar_pair))
-            status_bar_content = status_text.ljust(width - len(pos_text) - 2) + pos_text
+            # MODIFIÉ: Le contenu de la barre de statut est maintenant plus dense
+            status_bar_content = f" {stats_text}".ljust(width - len(pos_text) - 2) + pos_text
             self.stdscr.addstr(height - 1, 1, status_bar_content[:width - 2])
             self.stdscr.attroff(curses.color_pair(status_bar_pair))
         
