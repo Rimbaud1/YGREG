@@ -38,8 +38,16 @@ FILE_ICON_MAP = {
 }
 
 GROUPED_COMMANDS = [
-    ("Fichier",         [('s', "Sauvegarder"), ('q', "Quitter"), ('h', "Aide"), ('p', "Paramètres")]),
-    ("Recherche",       [('f', "Rechercher"), ('r', "Remplacer"), ('g', "Aller à")]),
-    ("Édition",         [('d', "Dupliquer"), ('j', "Joindre"), ('o', "Ordonner"), ('t', "Insérer Tableau")]),
-    ("Presse-papiers",  [('x', "Couper"), ('c', "Copier"), ('v', "Coller")]),
+    ("Fichier", [
+        ('s', "Sauvegarder"), ('q', "Quitter"), ('h', "Aide"), ('p', "Paramètres")
+    ]),
+    ("Recherche", [
+        ('f', "Rechercher"), ('r', "Remplacer"), ('g', "Aller à")
+    ]),
+    ("Édition", [
+        ('d', "Dupliquer"), ('j', "Joindre"), ('o', "Ordonner"), ('t', "Tableau")
+    ]),
+    ("Presse-papiers", [
+        ('x', "Couper"), ('c', "Copier"), ('v', "Coller")
+    ]),
 ]

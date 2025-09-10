@@ -9,9 +9,8 @@ import uuid
 from datetime import datetime
 
 from .utils import prompt_input
-from .constants import LOREM_IPSUM
+from .constants import LOREM_IPSUM, GROUPED_COMMANDS
 from . import syntax # Import du module de coloration
-from .screens import display_command_menu
 
 class Editor:
     def __init__(self, stdscr, file_path, settings):
@@ -406,27 +405,51 @@ class Editor:
         return "continue"
     
     def _handle_command_mode(self):
-        cmd_key = display_command_menu(self.stdscr)
+        page_index = 0
+        all_command_keys = {cmd[0] for _, cmds in GROUPED_COMMANDS for cmd in cmds}
 
-        # The main loop will refresh the screen, clearing the menu
-        if not cmd_key:
-            return "continue"
+        while True:
+            group_name, commands = GROUPED_COMMANDS[page_index]
 
-        cmd = cmd_key
-        if cmd == 's': self._save_file()
-        elif cmd == 'q': return "quit"
-        elif cmd == 'h': return "help"
-        elif cmd == 'p': return "settings"
-        elif cmd == 'f': self._search()
-        elif cmd == 'r': self._search_and_replace()
-        elif cmd == 'g': self._goto_line()
-        elif cmd == 'd': self._duplicate_line_or_selection()
-        elif cmd == 'j': self._join_lines()
-        elif cmd == 'o': self._sort_lines()
-        elif cmd == 't': self._insert_table()
-        elif cmd == 'x': self._copy_selection(); self._delete_selection()
-        elif cmd == 'c': self._copy_selection()
-        elif cmd == 'v': self._paste()
+            prompt_parts = [f"({key}){desc.split()[0]}" for key, desc in commands]
+            prompt = f"CMD {group_name}: {' '.join(prompt_parts)} | Tab: plus, Esc: annuler"
+
+            h, w = self._get_screen_size()
+            self.stdscr.attron(curses.color_pair(1))
+            self.stdscr.addstr(h - 1, 1, prompt.ljust(w - 2)[:w-2])
+            self.stdscr.attroff(curses.color_pair(1))
+            self.stdscr.refresh()
+
+            try:
+                key = self.stdscr.get_wch()
+            except (curses.error, KeyboardInterrupt):
+                return "continue"
+
+            if key == '\t':
+                page_index = (page_index + 1) % len(GROUPED_COMMANDS)
+                continue
+
+            if isinstance(key, str) and key in all_command_keys:
+                cmd = key
+                if cmd == 's': self._save_file()
+                elif cmd == 'q': return "quit"
+                elif cmd == 'h': return "help"
+                elif cmd == 'p': return "settings"
+                elif cmd == 'f': self._search()
+                elif cmd == 'r': self._search_and_replace()
+                elif cmd == 'g': self._goto_line()
+                elif cmd == 'd': self._duplicate_line_or_selection()
+                elif cmd == 'j': self._join_lines()
+                elif cmd == 'o': self._sort_lines()
+                elif cmd == 't': self._insert_table()
+                elif cmd == 'x': self._copy_selection(); self._delete_selection()
+                elif cmd == 'c': self._copy_selection()
+                elif cmd == 'v': self._paste()
+
+            # Quitte le mode commande sur Esc ou toute autre touche
+            break
+
+        # Redessine l'interface normale pour effacer le prompt
         return "continue"
     
     def _get_selection_text(self):
