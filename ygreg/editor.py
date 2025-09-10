@@ -93,7 +93,7 @@ class Editor:
             self.stdscr.addstr(height - 1, 1, status_bar_content[:width - 2])
             self.stdscr.attroff(curses.color_pair(status_bar_pair))
         
-        self.stdscr.addstr(0, 3, "Ctrl+G > Commandes", curses.A_REVERSE)
+        self.stdscr.addstr(0, 3, "/cmd > Commandes", curses.A_REVERSE)
 
     def _get_word_under_cursor(self):
         if self.cursor_y >= len(self.lines): return ""
@@ -249,12 +249,26 @@ class Editor:
 
     def _handle_auto_expansion(self):
         line = self.lines[self.cursor_y]
-        word_match = re.search(r'(\S+)$', line[:self.cursor_x])
-        if not word_match: return False
+        line_before_cursor = line[:self.cursor_x]
+
+        # Trouve le dernier mot (alphanumérique) avant le curseur
+        matches = list(re.finditer(r'\b\w+\b', line_before_cursor))
+        if not matches:
+            return False
+
+        last_match = matches[-1]
+        word = last_match.group(0)
         
-        word = word_match.group(1)
+        # Vérifie que le curseur est positionné juste après le mot,
+        # n'autorisant que des caractères non-alphanumériques entre les deux.
+        # Ex: "date)" est ok, "date_suite" n'est pas ok.
+        text_between = line_before_cursor[last_match.end():]
+        if re.search(r'\w', text_between):
+            return False
+
         replacement, cursor_offset = None, None
 
+        # Vérifie si le mot est un mot-clé de remplacement
         if word == "date": replacement = datetime.now().strftime('%Y-%m-%d')
         elif word == "heure": replacement = datetime.now().strftime('%H:%M:%S')
         elif word == "now": replacement = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -268,11 +282,17 @@ class Editor:
             except (ValueError, IndexError): pass
         
         if replacement:
-            start_pos = word_match.start(1)
-            self.lines[self.cursor_y] = line[:start_pos] + replacement + line[self.cursor_x:]
-            self.cursor_x = start_pos + cursor_offset if cursor_offset is not None else start_pos + len(replacement)
+            start_pos = last_match.start()
+            end_pos = last_match.end()
+
+            # Construit la nouvelle ligne
+            self.lines[self.cursor_y] = line[:start_pos] + replacement + line[end_pos:]
+
+            # Met à jour la position du curseur
+            self.cursor_x = start_pos + (cursor_offset if cursor_offset is not None else len(replacement))
             self.modified = True
             return True
+
         return False
     
     def _calculate_line(self):
@@ -376,7 +396,7 @@ class Editor:
             self.cursor_y += 1; self.cursor_x = 0; self.modified = True
 
         elif key == '\t': # Touche Tab
-            if self.settings.get("smart_tab") and (self._handle_auto_expansion() or self._calculate_line()):
+            if self._handle_auto_expansion() or self._calculate_line():
                 pass # Les fonctions gèrent déjà la modification et le curseur
             elif self.selecting:
                 self._indent_selection()
@@ -390,9 +410,6 @@ class Editor:
 
         elif key == curses.KEY_BTAB: # Shift+Tab
             if self.selecting: self._unindent_selection()
-
-        elif key == 7: # Ctrl+G
-            return self._handle_command_mode()
 
         elif isinstance(key, int):
             if key == curses.KEY_UP or key == curses.KEY_SR: self.cursor_y = max(0, self.cursor_y - 1)
@@ -428,7 +445,14 @@ class Editor:
             if self.read_only: return "continue"
             if self.selecting: self._delete_selection()
             self.lines[self.cursor_y] = self.lines[self.cursor_y][:self.cursor_x] + key + self.lines[self.cursor_y][self.cursor_x:]
-            self.cursor_x += len(key); self.modified = True
+            self.cursor_x += len(key)
+            self.modified = True
+
+            line_before_cursor = self.lines[self.cursor_y][:self.cursor_x]
+            if line_before_cursor.endswith('/cmd'):
+                self.lines[self.cursor_y] = line_before_cursor[:-4] + self.lines[self.cursor_y][self.cursor_x:]
+                self.cursor_x -= 4
+                return self._handle_command_mode()
 
         if not is_shift_move: self.selecting = False
         if self.cursor_y >= len(self.lines): self.cursor_y = len(self.lines) - 1
