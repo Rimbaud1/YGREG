@@ -93,7 +93,7 @@ class Editor:
             self.stdscr.addstr(height - 1, 1, status_bar_content[:width - 2])
             self.stdscr.attroff(curses.color_pair(status_bar_pair))
         
-        self.stdscr.addstr(0, 3, "/cmd > Commandes", curses.A_REVERSE)
+        self.stdscr.addstr(0, 3, "Tab > Commandes", curses.A_REVERSE)
 
     def _get_word_under_cursor(self):
         if self.cursor_y >= len(self.lines): return ""
@@ -258,7 +258,7 @@ class Editor:
 
         last_match = matches[-1]
         word = last_match.group(0)
-        
+
         # Vérifie que le curseur est positionné juste après le mot,
         # n'autorisant que des caractères non-alphanumériques entre les deux.
         # Ex: "date)" est ok, "date_suite" n'est pas ok.
@@ -396,17 +396,17 @@ class Editor:
             self.cursor_y += 1; self.cursor_x = 0; self.modified = True
 
         elif key == '\t': # Touche Tab
-            if self._handle_auto_expansion() or self._calculate_line():
-                pass # Les fonctions gèrent déjà la modification et le curseur
-            elif self.selecting:
+            if self.selecting:
                 self._indent_selection()
-            else:
-                # Comportement par défaut : insérer une tabulation
+            elif self.cursor_x == 0:
                 tab_str = ' ' * self.settings.get("tab_size")
-                line = self.lines[self.cursor_y]
-                self.lines[self.cursor_y] = line[:self.cursor_x] + tab_str + line[self.cursor_x:]
+                self.lines[self.cursor_y] = tab_str + self.lines[self.cursor_y]
                 self.cursor_x += len(tab_str)
                 self.modified = True
+            elif self._handle_auto_expansion() or self._calculate_line():
+                pass # Handled by the functions
+            else:
+                return self._handle_command_mode()
 
         elif key == curses.KEY_BTAB: # Shift+Tab
             if self.selecting: self._unindent_selection()
@@ -445,14 +445,7 @@ class Editor:
             if self.read_only: return "continue"
             if self.selecting: self._delete_selection()
             self.lines[self.cursor_y] = self.lines[self.cursor_y][:self.cursor_x] + key + self.lines[self.cursor_y][self.cursor_x:]
-            self.cursor_x += len(key)
-            self.modified = True
-
-            line_before_cursor = self.lines[self.cursor_y][:self.cursor_x]
-            if line_before_cursor.endswith('/cmd'):
-                self.lines[self.cursor_y] = line_before_cursor[:-4] + self.lines[self.cursor_y][self.cursor_x:]
-                self.cursor_x -= 4
-                return self._handle_command_mode()
+            self.cursor_x += len(key); self.modified = True
 
         if not is_shift_move: self.selecting = False
         if self.cursor_y >= len(self.lines): self.cursor_y = len(self.lines) - 1
