@@ -36,3 +36,10 @@ FILE_ICON_MAP = {
     ".mp4": ("🎬", 10), ".zip": ("📦", 12), ".tar": ("📦", 12), ".gz": ("📦", 12), ".rar": ("📦", 12),
     ".exe": ("⚙️", 12), ".bin": ("⚙️", 12), ".log": ("📜", 11),
 }
+
+GROUPED_COMMANDS = [
+    ("Fichier",         [('s', "Sauvegarder"), ('q', "Quitter"), ('h', "Aide"), ('p', "Paramètres")]),
+    ("Recherche",       [('f', "Rechercher"), ('r', "Remplacer"), ('g', "Aller à")]),
+    ("Édition",         [('d', "Dupliquer"), ('j', "Joindre"), ('o', "Ordonner"), ('t', "Insérer Tableau")]),
+    ("Presse-papiers",  [('x', "Couper"), ('c', "Copier"), ('v', "Coller")]),
+]

@@ -2,6 +2,7 @@
 
 import curses
 from .themes import set_theme_colors
+from .constants import GROUPED_COMMANDS
 
 class SettingsScreen:
     def __init__(self, stdscr, settings):
@@ -108,3 +109,71 @@ class HelpScreen:
             y += 1
             
         self.stdscr.addstr(h-1, (w-39)//2, "Appuyez sur Q ou Entrée pour retourner", curses.color_pair(2))
+
+
+def display_command_menu(stdscr):
+    """
+    Affiche un menu de commandes centré et attend la saisie de l'utilisateur.
+    Retourne la clé de la commande ou None si l'utilisateur annule.
+    """
+    h, w = stdscr.getmaxyx()
+    curses.curs_set(0)
+
+    menu_height = sum(len(group[1]) for group in GROUPED_COMMANDS) + len(GROUPED_COMMANDS) + 3
+    menu_width = 50
+
+    start_y = (h - menu_height) // 2
+    start_x = (w - menu_width) // 2
+
+    # S'assurer que la fenêtre n'est pas trop grande pour le terminal
+    if menu_height > h: menu_height = h
+    if menu_width > w: menu_width = w
+    if start_y < 0: start_y = 0
+    if start_x < 0: start_x = 0
+
+    menu_win = curses.newwin(menu_height, menu_width, start_y, start_x)
+    menu_win.keypad(True)
+
+    menu_win.attron(curses.color_pair(3))
+    menu_win.box()
+    menu_win.attroff(curses.color_pair(3))
+
+    title = " Menu des Commandes "
+    menu_win.addstr(0, (menu_width - len(title)) // 2, title, curses.A_BOLD)
+
+    y = 2
+    all_keys = []
+    for group_name, commands in GROUPED_COMMANDS:
+        if y >= menu_height - 2: break
+        menu_win.addstr(y, 3, f"--- {group_name} ---", curses.A_BOLD)
+        y += 1
+        for key, desc in commands:
+            if y >= menu_height - 2: break
+            all_keys.append(key)
+            text = f"  ({key}) {desc}"
+            menu_win.addstr(y, 3, text)
+            y += 1
+
+    help_text = "Appuyez sur une touche pour agir, Echap pour annuler."
+    menu_win.addstr(menu_height - 1, (menu_width - len(help_text)) // 2, help_text, curses.color_pair(2))
+
+    menu_win.refresh()
+
+    key_pressed = None
+    while True:
+        try:
+            user_input = menu_win.getch()
+            if user_input in [27]: # ESC
+                break
+
+            char_input = chr(user_input).lower()
+            if char_input in all_keys:
+                key_pressed = char_input
+                break
+        except (curses.error, ValueError):
+            pass
+
+    curses.curs_set(1)
+    # La fonction appelante devra rafraîchir l'écran principal
+    # pour effacer le menu.
+    return key_pressed
