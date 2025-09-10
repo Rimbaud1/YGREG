@@ -74,37 +74,37 @@ class HelpScreen:
         self.stdscr.attron(curses.color_pair(3)); self.stdscr.box(); self.stdscr.attroff(curses.color_pair(3))
         self.stdscr.addstr(0, (w-16)//2, " YGREG - Aide ", curses.A_BOLD)
         
-        # MODIFIÉ: Mise à jour du contenu de l'aide
         help_content = [
-            ("--- Navigation & Commandes (Tab > Touche) ---", ""),
-            ("s: Sauvegarder",         "q: Quitter"),
-            ("h: Afficher cette aide", "p: Paramètres"),
-            ("f: Rechercher",          "r: Remplacer"),
-            ("g: Aller à la ligne",    ""),
+            ("--- Navigation & Commandes ---", None),
+            ("Ctrl+G", "Ouvrir le menu des commandes"),
+            ("  s: Sauvegarder", "q: Quitter l'éditeur"),
+            ("  h: Aide", "p: Paramètres"),
+            ("  f: Rechercher", "r: Remplacer"),
+            ("  g: Aller à la ligne", "d: Dupliquer la ligne"),
             ("", ""),
-            ("--- Édition & Sélection ---", ""),
-            ("Shift+Flèches: Sélectionner",     "x/c/v: Couper/Copier/Coller"),
-            ("Entrée sur sélection: Casser la ligne", "Tab/Shift+Tab: Indenter/Désindenter"),
-            ("d: Dupliquer ligne/sélection", "j: Joindre avec la ligne suivante"),
-            ("o: Ordonner la sélection", ""), # MODIFIÉ: 's' devient 'o'
+            ("--- Édition & Sélection ---", None),
+            ("Shift+Flèches", "Sélectionner du texte"),
+            ("(", "Auto-fermeture des paires (), [], {}, \"\", ''"),
+            ("Sélection + (", "Encadrer la sélection avec la paire"),
+            ("Ctrl+X/C/V", "Couper/Copier/Coller"),
+            ("Tab/Shift+Tab", "Indenter/Désindenter la sélection"),
             ("", ""),
-            ("--- Générateurs & Outils (Taper mot + Tab) ---", ""),
-            ("=' (ex: 5*sin(pi/2)=)", "Calcule le résultat de l'expression"),
-            ("date / heure", "Insère la date / l'heure actuelle"),
+            ("--- Snippets & Outils (mot + Tab) ---", None),
+            ("= (ex: 5*2=)", "Calcule une expression mathématique"),
+            ("date / heure / now", "Insère la date et/ou l'heure"),
             ("uuid", "Insère un identifiant unique"),
-            ("lorem<N>", "Insère N mots de Lorem Ipsum (ex: lorem20)"),
-            ("t (via Tab>t)", "Insère un modèle de tableau"),
+            ("link / img", "Insère un lien ou une image Markdown"),
+            ("lorem<N>", "Insère N mots de Lorem Ipsum"),
         ]
 
         y = 2
         for item in help_content:
             if y >= h - 2: break
-            if isinstance(item, str):
-                self.stdscr.addstr(y, 4, item, curses.A_BOLD)
+            title, desc = item
+            if desc is None: # C'est un titre de section
+                self.stdscr.addstr(y, 4, title, curses.A_BOLD)
             else:
-                col1, col2 = item
-                self.stdscr.addstr(y, 4, col1)
-                if col2: self.stdscr.addstr(y, w//2, col2)
+                self.stdscr.addstr(y, 6, f"{title:<20} -> {desc}")
             y += 1
             
         self.stdscr.addstr(h-1, (w-39)//2, "Appuyez sur Q ou Entrée pour retourner", curses.color_pair(2))

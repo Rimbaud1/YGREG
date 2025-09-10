@@ -15,6 +15,7 @@ def main(stdscr):
     """Fonction principale qui orchestre l'application."""
     settings = Settings()
     current_screen = "file_selector"
+    previous_screen = "file_selector"
     file_to_open = sys.argv[1] if len(sys.argv) > 1 else None
 
     while current_screen != "exit":
@@ -23,10 +24,19 @@ def main(stdscr):
         
         if current_screen == "file_selector":
             if file_to_open:
+                previous_screen = current_screen
                 current_screen = "editor"
             else:
-                file_to_open = FileSelector(stdscr, settings).run()
-                current_screen = "editor" if file_to_open else "exit"
+                action_or_path = FileSelector(stdscr, settings).run()
+                if action_or_path in ["settings", "help"]:
+                    previous_screen = "file_selector"
+                    current_screen = action_or_path
+                elif action_or_path:
+                    file_to_open = action_or_path
+                    previous_screen = "file_selector"
+                    current_screen = "editor"
+                else: # action_or_path is None
+                    current_screen = "exit"
 
         elif current_screen == "editor":
             editor_instance = Editor(stdscr, file_to_open, settings)
@@ -34,16 +44,19 @@ def main(stdscr):
             if action == "quit":
                 file_to_open = None
                 current_screen = "file_selector"
+            elif action in ["settings", "help"]:
+                previous_screen = "editor"
+                current_screen = action
             else:
                 current_screen = action
 
         elif current_screen == "settings":
             SettingsScreen(stdscr, settings).run()
-            current_screen = "editor"
+            current_screen = previous_screen
 
         elif current_screen == "help":
             HelpScreen(stdscr).run()
-            current_screen = "editor"
+            current_screen = previous_screen
 
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, '')
