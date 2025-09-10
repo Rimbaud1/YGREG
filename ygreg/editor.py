@@ -13,6 +13,8 @@ from .constants import LOREM_IPSUM, GROUPED_COMMANDS
 from . import syntax # Import du module de coloration
 
 class Editor:
+    AUTO_PAIRS = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
+
     def __init__(self, stdscr, file_path, settings):
         self.stdscr = stdscr
         self.file_path = file_path
@@ -91,7 +93,7 @@ class Editor:
             self.stdscr.addstr(height - 1, 1, status_bar_content[:width - 2])
             self.stdscr.attroff(curses.color_pair(status_bar_pair))
         
-        self.stdscr.addstr(0, 3, "Tab > Commandes", curses.A_REVERSE)
+        self.stdscr.addstr(0, 3, "Ctrl+G > Commandes", curses.A_REVERSE)
 
     def _get_word_under_cursor(self):
         if self.cursor_y >= len(self.lines): return ""
@@ -356,8 +358,6 @@ class Editor:
             self.selecting = True
             self.selection_anchor_y, self.selection_anchor_x = self.cursor_y, self.cursor_x
 
-        if self.selecting and isinstance(key, str) and key not in ['\t']: self._delete_selection()
-
         # MODIFIÉ: Ajout de 'or key == "\n"' pour gérer le cas où get_wch() retourne une chaîne
         if key in [curses.KEY_ENTER, 10, 13] or key == '\n':
             if self.read_only: return "continue"
@@ -375,18 +375,24 @@ class Editor:
             self.lines[self.cursor_y] = line[:self.cursor_x]
             self.cursor_y += 1; self.cursor_x = 0; self.modified = True
 
-        elif key == '\t':
-            if self.settings.get("smart_tab"):
-                if self._handle_auto_expansion(): pass
-                elif self._calculate_line(): pass
-                elif self.selecting: self._indent_selection()
-                else: return self._handle_command_mode()
+        elif key == '\t': # Touche Tab
+            if self.settings.get("smart_tab") and (self._handle_auto_expansion() or self._calculate_line()):
+                pass # Les fonctions gèrent déjà la modification et le curseur
+            elif self.selecting:
+                self._indent_selection()
             else:
-                if self.selecting: self._indent_selection()
-                else: return self._handle_command_mode()
+                # Comportement par défaut : insérer une tabulation
+                tab_str = ' ' * self.settings.get("tab_size")
+                line = self.lines[self.cursor_y]
+                self.lines[self.cursor_y] = line[:self.cursor_x] + tab_str + line[self.cursor_x:]
+                self.cursor_x += len(tab_str)
+                self.modified = True
 
-        elif key == curses.KEY_BTAB:
+        elif key == curses.KEY_BTAB: # Shift+Tab
             if self.selecting: self._unindent_selection()
+
+        elif key == 7: # Ctrl+G
+            return self._handle_command_mode()
 
         elif isinstance(key, int):
             if key == curses.KEY_UP or key == curses.KEY_SR: self.cursor_y = max(0, self.cursor_y - 1)
@@ -403,8 +409,24 @@ class Editor:
                     prev_len = len(self.lines[self.cursor_y - 1])
                     self.lines[self.cursor_y - 1] += self.lines.pop(self.cursor_y)
                     self.cursor_y -= 1; self.cursor_x = prev_len; self.modified = True
+        elif isinstance(key, str) and key in self.AUTO_PAIRS:
+            if self.read_only: return "continue"
+            closing_char = self.AUTO_PAIRS[key]
+            if self.selecting:
+                # Si le wrapping échoue (ex: multi-ligne), on supprime la sélection et on insère normalement
+                if not self._wrap_selection(key, closing_char):
+                    self._delete_selection()
+                    self.lines[self.cursor_y] = self.lines[self.cursor_y][:self.cursor_x] + key + self.lines[self.cursor_y][self.cursor_x:]
+                    self.cursor_x += len(key)
+                    self.modified = True
+            else:
+                line = self.lines[self.cursor_y]
+                self.lines[self.cursor_y] = line[:self.cursor_x] + key + closing_char + line[self.cursor_x:]
+                self.cursor_x += 1
+                self.modified = True
         elif isinstance(key, str):
             if self.read_only: return "continue"
+            if self.selecting: self._delete_selection()
             self.lines[self.cursor_y] = self.lines[self.cursor_y][:self.cursor_x] + key + self.lines[self.cursor_y][self.cursor_x:]
             self.cursor_x += len(key); self.modified = True
 
@@ -469,6 +491,27 @@ class Editor:
         lines.extend(self.lines[start_y + 1:end_y])
         lines.append(self.lines[end_y][:end_x])
         return lines
+
+    def _wrap_selection(self, open_char, close_char):
+        if not self.selecting: return False
+        (start_y, start_x), (end_y, end_x) = self._get_selection_bounds()
+
+        # Pour l'instant, on ne gère que les sélections sur une seule ligne
+        if start_y != end_y:
+            return False
+
+        selected_text = self.lines[start_y][start_x:end_x]
+        wrapped_text = open_char + selected_text + close_char
+
+        line = self.lines[start_y]
+        self.lines[start_y] = line[:start_x] + wrapped_text + line[end_x:]
+
+        # Mettre à jour le curseur et l'état de la sélection
+        self.cursor_y = start_y
+        self.cursor_x = start_x + len(wrapped_text)
+        self.selecting = False
+        self.modified = True
+        return True
         
     def _delete_selection(self):
         if not self.selecting: return
