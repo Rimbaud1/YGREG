@@ -296,17 +296,25 @@ class Editor:
         return False
     
     def _calculate_line(self):
-        line = self.lines[self.cursor_y].split('=')[0].strip()
-        if not self.lines[self.cursor_y].strip().endswith('=') or not line: return False
+        line_content = self.lines[self.cursor_y]
+        if not line_content.strip().endswith('='):
+            return False
+
+        expression = line_content.split('=')[0].strip()
+        if not expression:
+            return False
+
         try:
             safe_env = {k: v for k, v in math.__dict__.items() if not k.startswith('_')}
-            result = eval(line, {"__builtins__": {}}, safe_env)
+            result = eval(expression, {"__builtins__": {}}, safe_env)
             result_str = str(int(result) if isinstance(result, float) and result.is_integer() else f"{result:.4f}")
             self.lines[self.cursor_y] += f" {result_str}"
             self.cursor_x = len(self.lines[self.cursor_y])
             self.modified = True
-        except Exception as e: self._set_status_message(f"Erreur de calcul: {e}")
-        return True
+            return True # Success
+        except Exception as e:
+            self._set_status_message(f"Erreur de calcul: {e}")
+            return False # Failure
 
     def _duplicate_line_or_selection(self):
         if self.selecting:
