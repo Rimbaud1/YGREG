@@ -57,11 +57,6 @@ class Editor:
                     self.modified_counter = 0
         else: self.modified_counter = 0
 
-    def _get_document_stats(self):
-        char_count = sum(len(line) for line in self.lines)
-        word_count = sum(len(line.split()) for line in self.lines)
-        return char_count, word_count
-
     def _set_status_message(self, msg):
         self.status_message, self.status_message_time = msg, time.time()
 
@@ -88,14 +83,11 @@ class Editor:
         else:
             self.status_message = ""
             modified_char = '[+]' if self.modified else ''
-            char_count, word_count = self._get_document_stats()
-            stats_text = f"{len(self.lines)}L, {word_count}M, {char_count}C {modified_char}"
-
+            status_text = f" {len(self.lines)} Lignes {modified_char}"
             pos_text = f"L:{self.cursor_y + 1}, C:{self.cursor_x + 1} "
             
             self.stdscr.attron(curses.color_pair(status_bar_pair))
-            # MODIFIÉ: Le contenu de la barre de statut est maintenant plus dense
-            status_bar_content = f" {stats_text}".ljust(width - len(pos_text) - 2) + pos_text
+            status_bar_content = status_text.ljust(width - len(pos_text) - 2) + pos_text
             self.stdscr.addstr(height - 1, 1, status_bar_content[:width - 2])
             self.stdscr.attroff(curses.color_pair(status_bar_pair))
         
@@ -258,10 +250,15 @@ class Editor:
         word_match = re.search(r'(\S+)$', line[:self.cursor_x])
         if not word_match: return False
         
-        word = word_match.group(1); replacement = None
+        word = word_match.group(1)
+        replacement, cursor_offset = None, None
+
         if word == "date": replacement = datetime.now().strftime('%Y-%m-%d')
         elif word == "heure": replacement = datetime.now().strftime('%H:%M:%S')
+        elif word == "now": replacement = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         elif word == "uuid": replacement = str(uuid.uuid4())
+        elif word == "link": replacement, cursor_offset = "[](url)", 1
+        elif word == "img": replacement, cursor_offset = "![]()", 2
         elif word.startswith("lorem"):
             try:
                 num_words = int(word[5:])
@@ -271,7 +268,7 @@ class Editor:
         if replacement:
             start_pos = word_match.start(1)
             self.lines[self.cursor_y] = line[:start_pos] + replacement + line[self.cursor_x:]
-            self.cursor_x = start_pos + len(replacement)
+            self.cursor_x = start_pos + cursor_offset if cursor_offset is not None else start_pos + len(replacement)
             self.modified = True
             return True
         return False
