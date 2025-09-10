@@ -11,6 +11,7 @@ from datetime import datetime
 from .utils import prompt_input
 from .constants import LOREM_IPSUM
 from . import syntax # Import du module de coloration
+from .screens import display_command_menu
 
 class Editor:
     def __init__(self, stdscr, file_path, settings):
@@ -405,10 +406,13 @@ class Editor:
         return "continue"
     
     def _handle_command_mode(self):
-        prompt = "CMD: (s)ave (q)uit (h)elp (p)aram | (f)ind (r)eplace (g)oto | (d)upl (j)oin (o)rdonner (t)able | (x)cut (c)opy (v)paste"
-        cmd_key_str = prompt_input(self.stdscr, prompt + " : ")
-        if not cmd_key_str: return "continue"
-        cmd = cmd_key_str[0].lower()
+        cmd_key = display_command_menu(self.stdscr)
+
+        # The main loop will refresh the screen, clearing the menu
+        if not cmd_key:
+            return "continue"
+
+        cmd = cmd_key
         if cmd == 's': self._save_file()
         elif cmd == 'q': return "quit"
         elif cmd == 'h': return "help"
