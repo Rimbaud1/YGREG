@@ -9,7 +9,8 @@ class Settings:
             "theme": "dark",
             "autosave_threshold": 25,
             "show_syntax_highlighting": True,
-            "tab_size": 4
+            "tab_size": 4,
+            "smart_tab": False
         }
         self.settings = self.defaults.copy()
         self.load()

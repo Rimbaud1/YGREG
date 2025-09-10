@@ -371,10 +371,14 @@ class Editor:
             self.cursor_y += 1; self.cursor_x = 0; self.modified = True
 
         elif key == '\t':
-            if self._handle_auto_expansion(): pass
-            elif self._calculate_line(): pass
-            elif self.selecting: self._indent_selection()
-            else: return self._handle_command_mode()
+            if self.settings.get("smart_tab"):
+                if self._handle_auto_expansion(): pass
+                elif self._calculate_line(): pass
+                elif self.selecting: self._indent_selection()
+                else: return self._handle_command_mode()
+            else:
+                if self.selecting: self._indent_selection()
+                else: return self._handle_command_mode()
 
         elif key == curses.KEY_BTAB:
             if self.selecting: self._unindent_selection()
